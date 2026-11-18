@@ -18,7 +18,7 @@ if (!CFG.host || !CFG.user) { console.error('MC_HOST و MC_USER لازمه'); pr
 
 // ---------- state ----------
 const STATE_FILE = 'state.json'
-let S = { prices: [], lastBuy: null, lastSell: null, lastTrade: 0, startNet: null }
+let S = { prices: [], lastBuy: null, lastSell: null, lastTrade: 0, startNet: null, chatId: null, tgOffset: 0 }
 try { S = { ...S, ...JSON.parse(fs.readFileSync(STATE_FILE, 'utf8')) } } catch {}
 const save = () => { try { fs.writeFileSync(STATE_FILE, JSON.stringify(S)) } catch {} }
 
@@ -36,15 +36,38 @@ function parseNum(s) {
 }
 const fmt = (n) => n == null || isNaN(n) ? '؟' : n >= 1e6 ? (n / 1e6).toFixed(2) + 'M' : n >= 1e3 ? (n / 1e3).toFixed(2) + 'k' : (+n).toFixed(3).replace(/\.?0+$/, '')
 
+const chatId = () => CFG.tgChat || S.chatId
+
 async function tg(text) {
   log('TG:', text.replace(/\n/g, ' | '))
-  if (!CFG.tgToken || !CFG.tgChat) return
+  if (!CFG.tgToken || !chatId()) return
   try {
     await fetch(`https://api.telegram.org/bot${CFG.tgToken}/sendMessage`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ chat_id: CFG.tgChat, text })
+      body: JSON.stringify({ chat_id: chatId(), text })
     })
   } catch (e) { log('tg error', e.message) }
+}
+
+// اگه TG_CHAT ندادی: با اولین /start که به ربات بدی، خودش چت رو پیدا می‌کنه
+async function pollChat() {
+  if (!CFG.tgToken || chatId()) return
+  try {
+    const r = await fetch(`https://api.telegram.org/bot${CFG.tgToken}/getUpdates?offset=${S.tgOffset || 0}&timeout=0`)
+    const j = await r.json()
+    for (const u of j.result || []) {
+      S.tgOffset = u.update_id + 1
+      const m = u.message
+      if (m && m.chat && m.chat.type === 'private' && /^\/start/.test(m.text || '')) {
+        S.chatId = m.chat.id
+        save()
+        log('chat id found')
+        await tg('✅ به ربات وصل شدی. گزارش‌ها از الان به همین چت میاد.')
+        return
+      }
+    }
+    save()
+  } catch (e) { log('poll error', e.message) }
 }
 
 // ---------- game stats ----------
@@ -175,6 +198,7 @@ function start() {
 
 // ---------- timers ----------
 setInterval(() => { if (ready) readStats() }, 20e3)
+setInterval(pollChat, 5e3)
 setInterval(() => { if (ready) tg(statusText()) }, CFG.reportMs)
 if (CFG.antiAfk) {
   setInterval(() => {
