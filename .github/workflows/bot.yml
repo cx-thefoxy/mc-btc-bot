@@ -1,0 +1,39 @@
+name: mc-btc-bot
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 */5 * * *'
+
+concurrency:
+  group: mcbot
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 355
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - name: Restore state
+        uses: actions/cache@v4
+        with:
+          path: state.json
+          key: state-${{ github.run_id }}
+          restore-keys: state-
+      - run: npm install --no-audit --no-fund
+      - run: node bot.js
+        env:
+          RUN_MINUTES: 345
+          MC_HOST: ${{ secrets.MC_HOST }}
+          MC_PORT: ${{ secrets.MC_PORT }}
+          MC_USER: ${{ secrets.MC_USER }}
+          MC_AUTH: ${{ secrets.MC_AUTH }}
+          MC_PASSWORD: ${{ secrets.MC_PASSWORD }}
+          MC_VERSION: ${{ secrets.MC_VERSION }}
+          TG_TOKEN: ${{ secrets.TG_TOKEN }}
+          TG_CHAT: ${{ secrets.TG_CHAT }}
+          REPORT_HOURS: ${{ vars.REPORT_HOURS }}
+          AMOUNT: ${{ vars.AMOUNT }}
+          THRESH: ${{ vars.THRESH }}

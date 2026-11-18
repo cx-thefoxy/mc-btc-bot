@@ -1,0 +1,11 @@
+{
+  "name": "mc-btc-bot",
+  "version": "1.0.0",
+  "main": "bot.js",
+  "scripts": { "start": "node bot.js" },
+  "engines": { "node": ">=18" },
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "mineflayer": "^4.23.0"
+  }
+}

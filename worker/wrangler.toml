@@ -1,0 +1,11 @@
+name = "mcbot-trigger"
+main = "worker.js"
+compatibility_date = "2024-11-01"
+
+[triggers]
+crons = ["0 */5 * * *"]
+
+[vars]
+GH_REPO = "USERNAME/REPO"
+GH_BRANCH = "main"
+# GH_TOKEN رو با این دستور بذار:  npx wrangler secret put GH_TOKEN
